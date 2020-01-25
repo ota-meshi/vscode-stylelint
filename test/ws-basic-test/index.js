@@ -4,10 +4,12 @@ const { join } = require('path');
 
 const pWaitFor = require('p-wait-for');
 const test = require('tape');
-const { extensions, workspace, window } = require('vscode');
+const { extensions, workspace, window, Uri, commands } = require('vscode');
 
 const run = () =>
 	test('vscode-stylelint', async (t) => {
+		await commands.executeCommand('vscode.openFolder', Uri.file(__dirname));
+
 		const vscodeStylelint = extensions.getExtension('stylelint.vscode-stylelint');
 
 		const plaintextDocument = await workspace.openTextDocument({
