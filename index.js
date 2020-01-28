@@ -3,19 +3,45 @@
 const { LanguageClient, SettingMonitor, ExecuteCommandRequest } = require('vscode-languageclient');
 const { workspace, commands: Commands, window: Window } = require('vscode');
 
-const { activationEvents } = require('./package.json');
+const defaultLanguages = [
+	'css',
+	'html',
+	'javascript',
+	'javascriptreact',
+	'less',
+	'markdown',
+	'postcss',
+	'sass',
+	'scss',
+	'source.css.styled',
+	'source.markdown.math',
+	'styled-css',
+	'sugarss',
+	'svelte',
+	'typescript',
+	'typescriptreact',
+	'vue',
+	'vue-html',
+	'vue-postcss',
+	'xml',
+	'xsl',
+];
 
-const documentSelector = [];
+function getDocumentSelector() {
+	const config = workspace.getConfiguration('stylelint');
+	const validateLanguages = config.get('validate', defaultLanguages);
 
-for (const activationEvent of activationEvents) {
-	if (activationEvent.startsWith('onLanguage:')) {
-		const language = activationEvent.replace('onLanguage:', '');
+	const documentSelector = [];
 
+	for (const language of validateLanguages) {
 		documentSelector.push({ language, scheme: 'file' }, { language, scheme: 'untitled' });
 	}
+
+	return documentSelector;
 }
 
 exports.activate = ({ subscriptions }) => {
+	const documentSelector = getDocumentSelector();
 	const serverPath = require.resolve('./server.js');
 
 	const client = new LanguageClient(

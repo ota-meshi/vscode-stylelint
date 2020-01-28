@@ -12,26 +12,13 @@ const run = () =>
 
 		const vscodeStylelint = extensions.getExtension('stylelint.vscode-stylelint');
 
-		const plaintextDocument = await workspace.openTextDocument({
-			content: 'Hello',
-			language: 'plaintext',
-		});
-
-		await window.showTextDocument(plaintextDocument);
-
-		t.equal(
-			vscodeStylelint.isActive,
-			false,
-			'should not be activated when the open file is not CSS.',
-		);
-
 		const cssDocument = await workspace.openTextDocument({
 			content: '}',
 			language: 'css',
 		});
 
 		await window.showTextDocument(cssDocument);
-		await pWaitFor(() => vscodeStylelint.isActive, 2000);
+		await pWaitFor(() => vscodeStylelint.isActive, { timeout: 2000 });
 
 		t.pass('should be activated when the open file is CSS.');
 

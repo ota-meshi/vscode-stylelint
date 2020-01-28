@@ -17,12 +17,17 @@ const run = () =>
 		await window.showTextDocument(cssDocument);
 
 		// Wait until the Autofix command is available.
-		await pWaitFor(() => vscodeStylelint.isActive, 2000);
-		await pWaitFor(async () => {
-			const names = await commands.getCommands();
+		await pWaitFor(() => vscodeStylelint.isActive, { timeout: 2000 });
+		await pWaitFor(
+			async () => {
+				const names = await commands.getCommands();
 
-			return names.includes('stylelint.executeAutofix') && names.includes('stylelint.applyAutoFix');
-		}, 2000);
+				return (
+					names.includes('stylelint.executeAutofix') && names.includes('stylelint.applyAutoFix')
+				);
+			},
+			{ timeout: 2000 },
+		);
 
 		// Execute the Autofix command.
 		await commands.executeCommand('stylelint.executeAutofix');
