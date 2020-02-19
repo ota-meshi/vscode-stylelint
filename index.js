@@ -1,21 +1,22 @@
 'use strict';
 
-const { LanguageClient, SettingMonitor, ExecuteCommandRequest } = require('vscode-languageclient');
+const { LanguageClient, ExecuteCommandRequest, Disposable } = require('vscode-languageclient');
 const { workspace, commands: Commands, window: Window } = require('vscode');
 
-const { activationEvents } = require('./package.json');
+function buildDocumentSelector(validate) {
+	const languages = validate && validate.length ? validate : ['css', 'less', 'postcss', 'scss'];
 
-const documentSelector = [];
+	const documentSelector = [];
 
-for (const activationEvent of activationEvents) {
-	if (activationEvent.startsWith('onLanguage:')) {
-		const language = activationEvent.replace('onLanguage:', '');
-
+	for (const language of languages) {
 		documentSelector.push({ language, scheme: 'file' }, { language, scheme: 'untitled' });
 	}
+
+	return documentSelector;
 }
 
 exports.activate = ({ subscriptions }) => {
+	let stylelintConfigurations = getConfigurations();
 	const serverPath = require.resolve('./server.js');
 
 	const client = new LanguageClient(
@@ -32,7 +33,7 @@ exports.activate = ({ subscriptions }) => {
 			},
 		},
 		{
-			documentSelector,
+			documentSelector: buildDocumentSelector(stylelintConfigurations.validate),
 			diagnosticCollectionName: 'stylelint',
 			synchronize: {
 				configurationSection: 'stylelint',
@@ -43,7 +44,18 @@ exports.activate = ({ subscriptions }) => {
 		},
 	);
 
+	if (stylelintConfigurations.enable) {
+		client.start();
+	}
+
+	workspace.onDidChangeConfiguration(configurationChanged);
+
 	subscriptions.push(
+		Disposable.create(() => {
+			if (client.needsStop()) {
+				client.stop();
+			}
+		}),
 		Commands.registerCommand('stylelint.executeAutofix', async () => {
 			const textEditor = Window.activeTextEditor;
 
@@ -67,5 +79,35 @@ exports.activate = ({ subscriptions }) => {
 			});
 		}),
 	);
-	subscriptions.push(new SettingMonitor(client, 'stylelint.enable').start());
+
+	function getConfigurations() {
+		const configuration = workspace.getConfiguration('stylelint');
+
+		return {
+			validate: configuration.get('validate', ['css', 'less', 'postcss', 'scss']),
+			enable: configuration.get('enable', true),
+		};
+	}
+
+	async function configurationChanged() {
+		const oldConfigurationsJSON = JSON.stringify(stylelintConfigurations);
+
+		stylelintConfigurations = getConfigurations();
+
+		const isChanged = JSON.stringify(stylelintConfigurations) !== oldConfigurationsJSON;
+
+		if (!isChanged) {
+			return;
+		}
+
+		if (client.needsStop()) {
+			await client.stop();
+		}
+
+		client.clientOptions.documentSelector = buildDocumentSelector(stylelintConfigurations.validate);
+
+		if (stylelintConfigurations.enable && client.needsStart()) {
+			client.start();
+		}
+	}
 };
